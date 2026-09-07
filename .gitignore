@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+**/google-services.json
+**/GoogleService-Info.plist
+**/build/
+**/.dart_tool/
+**/.packages
+**/ios/Pods/
+**/android/.gradle/
+node_modules/
+coverage/
