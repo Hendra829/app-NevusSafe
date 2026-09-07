@@ -10,6 +10,13 @@ const server = createServer((req, res) => {
   if (req.method === 'GET' && req.url === '/health') {
     return json(res, 200, { status: 'ok', service: 'nevus-safe-api' });
   }
+  if (req.method === 'GET' && req.url === '/metrics') {
+    return json(res, 200, {
+      uptimeSeconds: Math.round(process.uptime()),
+      memoryBytes: process.memoryUsage().heapUsed,
+      timestamp: new Date().toISOString(),
+    });
+  }
   if (req.method === 'GET' && req.url === '/v1/policy') {
     return json(res, 200, {
       maxFileBytes: Number(process.env.MAX_FILE_BYTES || 10737418240),

@@ -34,3 +34,17 @@ uploads are streamed in 8 MiB chunks. The policy can be tightened by changing
 The client foundation intentionally keeps platform credentials out of source
 control. Add Google OAuth client IDs through native platform configuration
 (`google-services.json`/`GoogleService-Info.plist`) outside this repository.
+
+## Production deployment
+
+Tag a release (`vX.Y.Z`) to run `.github/workflows/release.yml`. The workflow
+produces Android APK/AAB artifacts and an unsigned iOS IPA archive for signing
+and submission. Android signing values and App Store credentials must be
+configured as repository secrets; no signing material belongs in Git.
+
+Before publishing, review [docs/privacy-policy.md](docs/privacy-policy.md),
+configure the store privacy disclosures for Google Drive access, and verify
+that production OAuth client IDs are restricted to the released package/bundle
+identifiers. The API exposes `/health` for liveness checks and `/metrics` for
+basic uptime and memory monitoring; put it behind authenticated infrastructure
+monitoring and alert on failures or abnormal memory growth.
