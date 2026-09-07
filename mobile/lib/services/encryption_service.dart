@@ -7,15 +7,34 @@ class EncryptionService {
 
   final KeyStore _keys;
   final _algorithm = AesGcm.with256bits();
+  Future<SecretKey>? _keyFuture;
 
-  Future<SecretKey> _key() async {
+  Future<SecretKey> _loadOrCreateKey() async {
     final existing = await _keys.readKey();
-    if (existing != null && existing.length == 32) {
+    if (existing != null) {
+      if (existing.length != 32) {
+        throw StateError('Stored encryption key is invalid');
+      }
       return SecretKey(existing);
     }
     final generated = await _algorithm.newSecretKey();
     await _keys.writeKey(await generated.extractBytes());
     return generated;
+  }
+
+  Future<SecretKey> _key() {
+    return _keyFuture ??= _loadOrCreateKey();
+  }
+
+  Future<SecretKey> _existingKey() async {
+    final existing = await _keys.readKey();
+    if (existing == null) {
+      throw StateError('Encryption key is missing');
+    }
+    if (existing.length != 32) {
+      throw StateError('Stored encryption key is invalid');
+    }
+    return SecretKey(existing);
   }
 
   Future<Uint8List> encrypt(Uint8List plaintext) async {
@@ -31,7 +50,7 @@ class EncryptionService {
       mac: Mac(payload.sublist(payload.length - 16)),
     );
     return Uint8List.fromList(
-      await _algorithm.decrypt(box, secretKey: await _key()),
+      await _algorithm.decrypt(box, secretKey: await _existingKey()),
     );
   }
 }

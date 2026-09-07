@@ -1,6 +1,14 @@
 import { createServer } from 'node:http';
 
-const port = Number(process.env.PORT || 8080);
+const positiveNumber = (value, fallback) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const configuredPort = positiveNumber(process.env.PORT || 8080, 8080);
+const port = Number.isInteger(configuredPort) && configuredPort <= 65535
+  ? configuredPort
+  : 8080;
 const json = (res, status, body) => {
   res.writeHead(status, { 'content-type': 'application/json' });
   res.end(JSON.stringify(body));
@@ -19,8 +27,8 @@ const server = createServer((req, res) => {
   }
   if (req.method === 'GET' && req.url === '/v1/policy') {
     return json(res, 200, {
-      maxFileBytes: Number(process.env.MAX_FILE_BYTES || 10737418240),
-      uploadChunkBytes: Number(process.env.UPLOAD_CHUNK_BYTES || 8388608),
+      maxFileBytes: positiveNumber(process.env.MAX_FILE_BYTES || 10737418240, 10737418240),
+      uploadChunkBytes: positiveNumber(process.env.UPLOAD_CHUNK_BYTES || 8388608, 8388608),
       driveScope: 'https://www.googleapis.com/auth/drive.file',
     });
   }

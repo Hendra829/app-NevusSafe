@@ -18,9 +18,8 @@ optional Google Drive backup. The repository is split into:
 
 ## Supported files and limits
 
-The initial policy allows JPEG, PNG, GIF, WEBP, HEIC, MP4, MOV, RAW, MPEG4, MKV
-and VLC files. It also supports PDF, DOCX, XLSX, PPTX, TXT, CSV, ZIP, MD and
-APK files. A single file is limited to 7 GiB;
+The initial policy allows JPG, JPEG, PNG, GIF, WEBP, HEIC, MP4, MOV, PDF, DOCX,
+XLSX, PPTX, TXT, CSV and ZIP files. A single file is limited to 10 GiB;
 uploads are streamed in 8 MiB chunks. The policy can be tightened by changing
 `mobile/lib/core/file_policy.dart` and the matching server environment values.
 

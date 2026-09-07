@@ -29,6 +29,7 @@ CREATE TABLE files (
   encrypted_path TEXT NOT NULL,
   drive_id TEXT,
   version BIGINT NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   deleted_at TIMESTAMPTZ
 );

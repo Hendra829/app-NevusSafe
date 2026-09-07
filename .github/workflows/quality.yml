@@ -22,8 +22,14 @@ jobs:
       - run: node --check src/server.js
       - run: npm start &
       - run: |
-          sleep 1
-          curl --fail http://localhost:8080/health
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://localhost:8080/health; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Server did not become healthy"
+          exit 1
 
   mobile:
     runs-on: ubuntu-latest
