@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nevus_safe/services/encryption_service.dart';
+import 'package:nevus_safe/services/key_store.dart';
 
 class _MemoryKeyStore implements VaultKeyStore {
   List<int>? _key;
