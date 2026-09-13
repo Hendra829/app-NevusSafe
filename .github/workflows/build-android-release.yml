@@ -1,27 +1,38 @@
-name: Build Android Release APK
+name: Build Android APK
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
-      - copilot/diagnosis-apk-proyek
+  pull_request:
+    paths:
+      - "mobile/**"
+      - ".github/workflows/build-android-release.yml"
 
 permissions:
   contents: read
 
+concurrency:
+  group: android-apk-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-apk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: mobile
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -29,13 +40,20 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          flutter-version: "3.24.0"
           channel: stable
+          cache: true
 
-      - name: Flutter pub get
+      - name: Resolve dependencies
         run: flutter pub get
 
-      - name: Check Android signing configuration
+      - name: Analyze
+        run: flutter analyze --fatal-infos
+
+      - name: Test
+        run: flutter test
+
+      - name: Detect signing mode
         id: signing
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -48,12 +66,14 @@ jobs:
                 -n "$ANDROID_KEY_ALIAS" &&
                 -n "$ANDROID_KEY_PASSWORD" ]]; then
             echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "variant=release" >> "$GITHUB_OUTPUT"
           else
             echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "Android signing secrets are unavailable; building an installable debug-signed APK."
+            echo "variant=debug" >> "$GITHUB_OUTPUT"
+            echo "::notice::Signing secrets are unavailable; producing a clearly labelled debug APK."
           fi
 
-      - name: Configure Android signing
+      - name: Configure release signing
         if: steps.signing.outputs.available == 'true'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -61,29 +81,37 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release-key.jks
-          cat > android/key.properties <<EOF
-          storePassword=$ANDROID_KEYSTORE_PASSWORD
-          keyPassword=$ANDROID_KEY_PASSWORD
-          keyAlias=$ANDROID_KEY_ALIAS
-          storeFile=app/release-key.jks
-          EOF
+          umask 077
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release-key.jks
+          {
+            printf 'storePassword=%s\n' "$ANDROID_KEYSTORE_PASSWORD"
+            printf 'keyPassword=%s\n' "$ANDROID_KEY_PASSWORD"
+            printf 'keyAlias=%s\n' "$ANDROID_KEY_ALIAS"
+            printf 'storeFile=app/release-key.jks\n'
+          } > android/key.properties
 
-      - name: Build APK (release)
+      - name: Build signed release APK
+        if: steps.signing.outputs.available == 'true'
         run: flutter build apk --release
 
-      - name: Upload APK artifact
+      - name: Build debug APK
+        if: steps.signing.outputs.available != 'true'
+        run: flutter build apk --debug
+
+      - name: Create checksum
+        run: sha256sum build/app/outputs/flutter-apk/app-${{ steps.signing.outputs.variant }}.apk > app-${{ steps.signing.outputs.variant }}.apk.sha256
+
+      - name: Upload APK and checksum
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-apk
-          path: mobile/build/app/outputs/flutter-apk/app-release.apk
+          name: nevussafe-android-${{ steps.signing.outputs.variant }}
+          path: |
+            mobile/build/app/outputs/flutter-apk/app-${{ steps.signing.outputs.variant }}.apk
+            mobile/app-${{ steps.signing.outputs.variant }}.apk.sha256
+          if-no-files-found: error
+          retention-days: 14
 
-      - name: Zip source code
-        working-directory: .
-        run: zip -r app-NevusSafe-source.zip . -x "app-NevusSafe-source.zip" ".git*" "*/.git/*" "mobile/android/key.properties" "mobile/android/app/release-key.jks"
-
-      - name: Upload source ZIP artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-source-zip
-          path: app-NevusSafe-source.zip
+      - name: Remove signing material
+        if: always()
+        run: |
+          rm -f android/key.properties android/app/release-key.jks
