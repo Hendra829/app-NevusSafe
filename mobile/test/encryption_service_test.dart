@@ -21,8 +21,8 @@ void main() {
     final encrypted = await service.encrypt(plaintext);
     final decrypted = await service.decrypt(encrypted);
 
-    expect(encrypted, isNot(equals(plaintext)));
-    expect(decrypted, equals(plaintext));
+    expect(encrypted, isNot(orderedEquals(plaintext)));
+    expect(decrypted, orderedEquals(plaintext));
   });
 
   test('rejects a malformed stored key instead of rotating it', () async {
@@ -30,7 +30,7 @@ void main() {
     final service = EncryptionService(keys);
 
     expect(
-      () => service.encrypt(Uint8List.fromList([1])),
+      service.encrypt(Uint8List.fromList([1])),
       throwsA(isA<StateError>()),
     );
   });
