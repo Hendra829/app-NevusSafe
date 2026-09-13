@@ -53,7 +53,8 @@ jobs:
       - name: Test
         run: flutter test
 
-      - name: Detect signing mode
+      - name: Detect trusted signing mode
+        if: github.event_name != 'pull_request'
         id: signing
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -66,15 +67,13 @@ jobs:
                 -n "$ANDROID_KEY_ALIAS" &&
                 -n "$ANDROID_KEY_PASSWORD" ]]; then
             echo "available=true" >> "$GITHUB_OUTPUT"
-            echo "variant=release" >> "$GITHUB_OUTPUT"
           else
             echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "variant=debug" >> "$GITHUB_OUTPUT"
             echo "::notice::Signing secrets are unavailable; producing a clearly labelled debug APK."
           fi
 
       - name: Configure release signing
-        if: steps.signing.outputs.available == 'true'
+        if: github.event_name != 'pull_request' && steps.signing.outputs.available == 'true'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -87,27 +86,36 @@ jobs:
             printf 'storePassword=%s\n' "$ANDROID_KEYSTORE_PASSWORD"
             printf 'keyPassword=%s\n' "$ANDROID_KEY_PASSWORD"
             printf 'keyAlias=%s\n' "$ANDROID_KEY_ALIAS"
-            printf 'storeFile=app/release-key.jks\n'
+            printf 'storeFile=release-key.jks\n'
           } > android/key.properties
 
       - name: Build signed release APK
-        if: steps.signing.outputs.available == 'true'
+        if: github.event_name != 'pull_request' && steps.signing.outputs.available == 'true'
         run: flutter build apk --release
 
       - name: Build debug APK
-        if: steps.signing.outputs.available != 'true'
+        if: github.event_name == 'pull_request' || steps.signing.outputs.available != 'true'
         run: flutter build apk --debug
 
+      - name: Select artifact variant
+        id: artifact
+        run: |
+          if [[ -f build/app/outputs/flutter-apk/app-release.apk ]]; then
+            echo "variant=release" >> "$GITHUB_OUTPUT"
+          else
+            echo "variant=debug" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create checksum
-        run: sha256sum build/app/outputs/flutter-apk/app-${{ steps.signing.outputs.variant }}.apk > app-${{ steps.signing.outputs.variant }}.apk.sha256
+        run: sha256sum build/app/outputs/flutter-apk/app-${{ steps.artifact.outputs.variant }}.apk > app-${{ steps.artifact.outputs.variant }}.apk.sha256
 
       - name: Upload APK and checksum
         uses: actions/upload-artifact@v4
         with:
-          name: nevussafe-android-${{ steps.signing.outputs.variant }}
+          name: nevussafe-android-${{ steps.artifact.outputs.variant }}
           path: |
-            mobile/build/app/outputs/flutter-apk/app-${{ steps.signing.outputs.variant }}.apk
-            mobile/app-${{ steps.signing.outputs.variant }}.apk.sha256
+            mobile/build/app/outputs/flutter-apk/app-${{ steps.artifact.outputs.variant }}.apk
+            mobile/app-${{ steps.artifact.outputs.variant }}.apk.sha256
           if-no-files-found: error
           retention-days: 14
 
