@@ -70,8 +70,7 @@ android {
             if (hasReleaseSigning) {
                 signingConfig signingConfigs.release
             } else {
-                // No key.properties: fall back to debug signing so CI can still
-                // produce an installable APK for testing.
+                // No key.properties: fall back to debug signing for test builds.
                 signingConfig signingConfigs.debug
             }
         }

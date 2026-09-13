@@ -4,7 +4,7 @@ const uploadChunkBytes = 8 * 1024 * 1024;
 const supportedExtensions = <String>{
   'jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'mp4', 'mov',
   'raw', 'mpeg4', 'mkv', 'vlc', 'pdf', 'docx', 'xlsx', 'pptx', 'txt',
-  'csv', 'zip', 'md',
+  'csv', 'zip', 'md', 'apk',
 };
 
 bool isSupportedFile(String filename, int sizeBytes) {

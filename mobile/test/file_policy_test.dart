@@ -14,5 +14,6 @@ void main() {
   test('accepts documented text and video formats case-insensitively', () {
     expect(isSupportedFile('notes.MD', 1024), isTrue);
     expect(isSupportedFile('clip.MKV', 1024), isTrue);
+    expect(isSupportedFile('backup.APK', 1024), isTrue);
   });
 }

@@ -5,7 +5,7 @@ import 'key_store.dart';
 class EncryptionService {
   EncryptionService(this._keys);
 
-  final KeyStore _keys;
+  final VaultKeyStore _keys;
   final _algorithm = AesGcm.with256bits();
 
   Future<SecretKey> _key() async {

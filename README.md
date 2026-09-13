@@ -1,7 +1,7 @@
 # NevusSafe
 
-NevusSafe is a privacy-first file vault with encrypted local storage and an
-optional Google Drive backup. The repository is split into:
+NevusSafe is a privacy-first file vault with encrypted local storage. The
+repository is split into:
 
 - `mobile/`: Flutter client (UI, local file management, encryption and sync).
 - `server/`: small HTTP API boundary for authentication metadata and sync jobs.
@@ -20,9 +20,14 @@ optional Google Drive backup. The repository is split into:
 
 The initial policy allows JPEG, PNG, GIF, WEBP, HEIC, MP4, MOV, RAW, MPEG4, MKV
 and VLC files. It also supports PDF, DOCX, XLSX, PPTX, TXT, CSV, ZIP, MD and
-APK files. A single file is limited to 7 GiB;
+APK files. A single file is limited to 10 GiB;
 uploads are streamed in 8 MiB chunks. The policy can be tightened by changing
 `mobile/lib/core/file_policy.dart` and the matching server environment values.
+
+The current mobile build implements the encrypted local vault. Google Drive
+configuration is kept separate from the client so cloud synchronization can be
+enabled only after production OAuth credentials and authenticated sync
+endpoints are configured.
 
 ## Local development
 

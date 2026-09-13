@@ -69,6 +69,14 @@ class VaultStorageService {
     );
   }
 
+  File _encryptedFile(Directory vault, VaultFile file) {
+    final expectedName = '${file.id}.vault';
+    if (file.relativePath != expectedName) {
+      throw const VaultStorageException('Vault file path is invalid');
+    }
+    return File(path.join(vault.path, expectedName));
+  }
+
   Future<VaultFile> importFile(String sourcePath) async {
     final source = File(sourcePath);
     if (!await source.exists()) {
@@ -111,7 +119,7 @@ class VaultStorageService {
 
   Future<void> deleteFile(VaultFile file) async {
     final vault = await _vaultDirectory();
-    final encryptedFile = File(path.join(vault.path, file.relativePath));
+    final encryptedFile = _encryptedFile(vault, file);
     if (await encryptedFile.exists()) await encryptedFile.delete();
 
     final files = await listFiles();
@@ -121,7 +129,7 @@ class VaultStorageService {
 
   Future<Uint8List> decryptFile(VaultFile file) async {
     final vault = await _vaultDirectory();
-    final encryptedFile = File(path.join(vault.path, file.relativePath));
+    final encryptedFile = _encryptedFile(vault, file);
     if (!await encryptedFile.exists()) {
       throw const VaultStorageException('Encrypted file is missing');
     }
@@ -150,6 +158,7 @@ class VaultStorageService {
       '.csv': 'text/csv',
       '.md': 'text/markdown',
       '.zip': 'application/zip',
+      '.apk': 'application/vnd.android.package-archive',
     };
     return mimeTypes[extension] ?? 'application/octet-stream';
   }

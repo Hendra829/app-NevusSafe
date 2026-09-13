@@ -1,7 +1,12 @@
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-class KeyStore {
+abstract interface class VaultKeyStore {
+  Future<List<int>?> readKey();
+  Future<void> writeKey(List<int> key);
+}
+
+class KeyStore implements VaultKeyStore {
   KeyStore({FlutterSecureStorage? storage})
       : _storage = storage ?? const FlutterSecureStorage();
 

@@ -1,5 +1,5 @@
 name: nevus_safe
-description: Encrypted, local-first file vault with optional Google Drive backup.
+description: Encrypted, local-first file vault.
 publish_to: none
 version: 0.1.0+1
 
