@@ -10,7 +10,10 @@ class EncryptionService {
 
   Future<SecretKey> _key() async {
     final existing = await _keys.readKey();
-    if (existing != null && existing.length == 32) {
+    if (existing != null) {
+      if (existing.length != 32) {
+        throw const StateError('Stored vault key has an invalid length');
+      }
       return SecretKey(existing);
     }
     final generated = await _algorithm.newSecretKey();

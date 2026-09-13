@@ -20,4 +20,29 @@ class VaultFile {
   final DateTime updatedAt;
   final VaultFileStatus status;
   final String? remoteId;
+
+  factory VaultFile.fromJson(Map<String, dynamic> json) => VaultFile(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        sizeBytes: (json['sizeBytes'] as num).toInt(),
+        mimeType: json['mimeType'] as String,
+        relativePath: json['relativePath'] as String,
+        updatedAt: DateTime.parse(json['updatedAt'] as String),
+        status: VaultFileStatus.values.firstWhere(
+          (status) => status.name == json['status'],
+          orElse: () => VaultFileStatus.local,
+        ),
+        remoteId: json['remoteId'] as String?,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'sizeBytes': sizeBytes,
+        'mimeType': mimeType,
+        'relativePath': relativePath,
+        'updatedAt': updatedAt.toIso8601String(),
+        'status': status.name,
+        if (remoteId != null) 'remoteId': remoteId,
+      };
 }
