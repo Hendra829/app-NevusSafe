@@ -3,53 +3,72 @@
 NevusSafe is a privacy-first file vault with encrypted local storage. The
 repository is split into:
 
-- `mobile/`: Flutter client (UI, local file management, encryption and sync).
-- `server/`: small HTTP API boundary for authentication metadata and sync jobs.
+- `mobile/`: Flutter client for the user interface, local file management, and
+  encryption.
+- `server/`: small HTTP API boundary for policy and health metadata.
 - `database/`: PostgreSQL migrations. File bytes never pass through the API.
 
-## Security boundaries
+## Current security boundaries
 
-- Google Drive access is limited to `https://www.googleapis.com/auth/drive.file`.
-- OAuth client secrets and refresh tokens are runtime secrets; copy
+- Files are encrypted on-device with AES-256-GCM before being stored locally.
+- The AES-256 key is stored through Flutter Secure Storage.
+- A malformed stored key is rejected instead of silently replaced, preventing
+  existing vault files from becoming undecryptable.
+- Google Drive access is reserved for the least-privilege
+  `https://www.googleapis.com/auth/drive.file` scope.
+- OAuth client secrets and refresh tokens are runtime secrets. Copy
   `server/.env.example` to an ignored `.env` file and never commit credentials.
-- Files are encrypted on the device with AES-256-GCM before local/cloud storage.
-- The API stores metadata only. Resumable Drive uploads use short-lived,
-  authenticated sessions and do not expose encryption keys.
+- Cloud synchronization is not enabled in the current mobile build.
 
 ## Supported files and limits
 
-The initial policy allows JPEG, PNG, GIF, WEBP, HEIC, MP4, MOV, RAW, MPEG4, MKV
-and VLC files. It also supports PDF, DOCX, XLSX, PPTX, TXT, CSV, ZIP, MD and
-APK files. A single file is limited to 10 GiB;
-uploads are streamed in 8 MiB chunks. The policy can be tightened by changing
-`mobile/lib/core/file_policy.dart` and the matching server environment values.
+The current local vault accepts JPEG, PNG, GIF, WEBP, HEIC, MP4, MOV, RAW,
+MPEG4, MKV, VLC, PDF, DOCX, XLSX, PPTX, TXT, CSV, ZIP, MD, and APK files.
 
-The current mobile build implements the encrypted local vault. Google Drive
-configuration is kept separate from the client so cloud synchronization can be
-enabled only after production OAuth credentials and authenticated sync
-endpoints are configured.
+A selected file is currently buffered in memory for authenticated encryption.
+To avoid excessive Android memory pressure, imports are limited to 64 MiB.
+Support for larger files requires a versioned streaming-encryption format and
+migration tests; the existing format must not be changed silently.
+
+The mobile and server policy defaults must remain aligned:
+
+- `mobile/lib/core/file_policy.dart`
+- `server/.env.example`
+- `server/src/server.js`
 
 ## Local development
 
-1. Install Flutter and PostgreSQL.
-2. Run `cd mobile && flutter pub get && flutter test`.
-3. Apply `database/migrations/001_initial.sql` to a development database.
-4. Run `cd server && npm install && npm run dev` after creating `.env`.
+1. Install Flutter 3.24 and Node.js 20 or newer.
+2. Run `cd mobile && flutter pub get`.
+3. Run `flutter analyze --fatal-infos && flutter test`.
+4. Run `cd ../server && npm install --ignore-scripts`.
+5. Run `node --check src/server.js && npm start`.
+6. Verify `http://localhost:8080/health` returns HTTP 200.
 
-The client foundation intentionally keeps platform credentials out of source
-control. Add Google OAuth client IDs through native platform configuration
-(`google-services.json`/`GoogleService-Info.plist`) outside this repository.
+PostgreSQL is required only when database-backed features are implemented.
+Apply `database/migrations/001_initial.sql` to a development database before
+enabling those features.
 
-## Production deployment
+## Android builds
 
-Tag a release (`vX.Y.Z`) to run `.github/workflows/release.yml`. The workflow
-produces Android APK/AAB artifacts and an unsigned iOS IPA archive for signing
-and submission. Android signing values and App Store credentials must be
-configured as repository secrets; no signing material belongs in Git.
+`.github/workflows/build-android-release.yml` validates dependencies, static
+analysis, tests, APK compilation, checksum generation, and artifact upload.
+
+- Pull requests always produce a debug APK and never receive signing secrets.
+- Trusted manual or main-branch runs produce a signed release APK only when all
+  Android signing secrets are configured.
+- Debug and release artifacts are labelled separately.
+
+## Production release
+
+A version tag such as `v1.0.0`, or a trusted manual dispatch, runs
+`.github/workflows/release.yml`. The workflow requires all Android signing
+secrets and produces a signed APK, signed AAB, and SHA-256 checksums.
+
+The repository does not currently contain an iOS platform scaffold, so it does
+not claim to produce an IPA. Add and validate the iOS project and signing
+pipeline separately before advertising iOS release support.
 
 Before publishing, review [docs/privacy-policy.md](docs/privacy-policy.md),
-configure the store privacy disclosures for Google Drive access, and verify
-that production OAuth client IDs are restricted to the released package/bundle
-identifiers. The API exposes `/health` for liveness checks and `/metrics` for
-basic uptime and memory monitoring; put it behind authenticated infrastructure
-monitoring and alert on failures or abnormal memory growth.
+configure accurate store privacy disclosures, and restrict production OAuth
+client IDs to the released package and signing certificate.
