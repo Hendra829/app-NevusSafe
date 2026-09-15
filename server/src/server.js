@@ -19,7 +19,7 @@ const server = createServer((req, res) => {
   }
   if (req.method === 'GET' && req.url === '/v1/policy') {
     return json(res, 200, {
-      maxFileBytes: Number(process.env.MAX_FILE_BYTES || 10737418240),
+      maxFileBytes: Number(process.env.MAX_FILE_BYTES || 67108864),
       uploadChunkBytes: Number(process.env.UPLOAD_CHUNK_BYTES || 8388608),
       driveScope: 'https://www.googleapis.com/auth/drive.file',
     });
