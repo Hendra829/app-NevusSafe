@@ -1,31 +1,54 @@
-name: release
+name: Release Android
 
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   android:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: mobile
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - name: Checkout
+        uses: actions/checkout@v5
         with:
-          flutter-version: '3.24.0'
-          channel: stable
-      - uses: actions/setup-java@v4
+          persist-credentials: false
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
-      - run: flutter pub get
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.0"
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --fatal-infos
+
+      - name: Test
+        run: flutter test
+
       - name: Require Android signing secrets
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -33,10 +56,11 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          test -n "$ANDROID_KEYSTORE_BASE64"
-          test -n "$ANDROID_KEYSTORE_PASSWORD"
-          test -n "$ANDROID_KEY_ALIAS"
-          test -n "$ANDROID_KEY_PASSWORD"
+          [[ -n "$ANDROID_KEYSTORE_BASE64" ]] || { echo "::error::ANDROID_KEYSTORE_BASE64 is missing"; exit 1; }
+          [[ -n "$ANDROID_KEYSTORE_PASSWORD" ]] || { echo "::error::ANDROID_KEYSTORE_PASSWORD is missing"; exit 1; }
+          [[ -n "$ANDROID_KEY_ALIAS" ]] || { echo "::error::ANDROID_KEY_ALIAS is missing"; exit 1; }
+          [[ -n "$ANDROID_KEY_PASSWORD" ]] || { echo "::error::ANDROID_KEY_PASSWORD is missing"; exit 1; }
+
       - name: Configure Android signing
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -44,40 +68,37 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release-key.jks
-          cat > android/key.properties <<EOF
-          storePassword=$ANDROID_KEYSTORE_PASSWORD
-          keyPassword=$ANDROID_KEY_PASSWORD
-          keyAlias=$ANDROID_KEY_ALIAS
-          storeFile=app/release-key.jks
-          EOF
-      - run: flutter build apk --release
-      - run: flutter build appbundle --release
-      - uses: actions/upload-artifact@v4
+          umask 077
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release-key.jks
+          {
+            printf 'storePassword=%s\n' "$ANDROID_KEYSTORE_PASSWORD"
+            printf 'keyPassword=%s\n' "$ANDROID_KEY_PASSWORD"
+            printf 'keyAlias=%s\n' "$ANDROID_KEY_ALIAS"
+            printf 'storeFile=release-key.jks\n'
+          } > android/key.properties
+
+      - name: Build signed APK
+        run: flutter build apk --release
+
+      - name: Build signed app bundle
+        run: flutter build appbundle --release
+
+      - name: Create checksums
+        run: |
+          sha256sum             build/app/outputs/flutter-apk/app-release.apk             build/app/outputs/bundle/release/app-release.aab             > SHA256SUMS
+
+      - name: Upload signed Android release
+        uses: actions/upload-artifact@v4
         with:
-          name: android-release
+          name: nevussafe-android-release
           path: |
             mobile/build/app/outputs/flutter-apk/app-release.apk
             mobile/build/app/outputs/bundle/release/app-release.aab
+            mobile/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 30
 
-  ios:
-    runs-on: macos-latest
-    defaults:
-      run:
-        working-directory: mobile
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.24.0'
-          channel: stable
-      - run: flutter pub get
-      - run: flutter build ios --release --no-codesign
-      - run: |
-          mkdir -p build/ios/archives
-          ditto -c -k --sequesterRsrc --keepParent \
-            build/ios/iphoneos/Runner.app build/ios/archives/NevusSafe.ipa
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ios-release
-          path: mobile/build/ios/archives/NevusSafe.ipa
+      - name: Remove signing material
+        if: always()
+        run: |
+          rm -f android/key.properties android/app/release-key.jks
