@@ -26,7 +26,7 @@ The current local vault accepts JPEG, PNG, GIF, WEBP, HEIC, MP4, MOV, RAW,
 MPEG4, MKV, VLC, PDF, DOCX, XLSX, PPTX, TXT, CSV, ZIP, MD, and APK files.
 
 A selected file is currently buffered in memory for authenticated encryption.
-To avoid excessive Android memory pressure, imports are limited to 64 MiB.
+To avoid excessive Android memory pressure, imports are limited to 32 MiB.
 Support for larger files requires a versioned streaming-encryption format and
 migration tests; the existing format must not be changed silently.
 
