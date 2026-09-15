@@ -1,4 +1,4 @@
-const maxFileBytes = 64 * 1024 * 1024;
+const maxFileBytes = 32 * 1024 * 1024;
 const uploadChunkBytes = 8 * 1024 * 1024;
 
 const supportedExtensions = <String>{
