@@ -30,6 +30,8 @@ class VaultPage extends StatefulWidget {
   State<VaultPage> createState() => _VaultPageState();
 }
 
+enum _VaultAction { export, delete }
+
 class _VaultPageState extends State<VaultPage> {
   late final VaultStorageService _vault;
   List<VaultFile> _files = [];
@@ -74,6 +76,28 @@ class _VaultPageState extends State<VaultPage> {
       if (!mounted) return;
       setState(() => _files = [..._files, imported]);
       _showMessage('${imported.name} berhasil diamankan.');
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _exportFile(VaultFile file) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final decrypted = await _vault.decryptFile(file);
+      final savedPath = await FilePicker.platform.saveFile(
+        dialogTitle: 'Pulihkan file dari NevusSafe',
+        fileName: file.name,
+        bytes: decrypted,
+      );
+      if (!mounted || savedPath == null) return;
+      _showMessage('${file.name} berhasil dipulihkan.');
     } on Object catch (error) {
       if (!mounted) return;
       setState(() => _error = error.toString());
@@ -190,10 +214,33 @@ class _VaultPageState extends State<VaultPage> {
                               '${_formatBytes(file.sizeBytes)} • '
                               '${_formatDate(file.updatedAt)}',
                             ),
-                            trailing: IconButton(
-                              onPressed: _busy ? null : () => _deleteFile(file),
-                              tooltip: 'Hapus',
-                              icon: const Icon(Icons.delete_outline),
+                            trailing: PopupMenuButton<_VaultAction>(
+                              enabled: !_busy,
+                              tooltip: 'Tindakan file',
+                              onSelected: (action) {
+                                switch (action) {
+                                  case _VaultAction.export:
+                                    _exportFile(file);
+                                  case _VaultAction.delete:
+                                    _deleteFile(file);
+                                }
+                              },
+                              itemBuilder: (context) => const [
+                                PopupMenuItem(
+                                  value: _VaultAction.export,
+                                  child: ListTile(
+                                    leading: Icon(Icons.download_outlined),
+                                    title: Text('Pulihkan file'),
+                                  ),
+                                ),
+                                PopupMenuItem(
+                                  value: _VaultAction.delete,
+                                  child: ListTile(
+                                    leading: Icon(Icons.delete_outline),
+                                    title: Text('Hapus'),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         );
