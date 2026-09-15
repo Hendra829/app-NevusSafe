@@ -12,22 +12,6 @@ class _MemoryKeyStore implements VaultKeyStore {
 
   @override
   Future<void> writeKey(List<int> key) async => _key = key;
-  test('fails closed when decrypting without a stored key', () async {
-    final service = EncryptionService(_MemoryKeyStore());
-    final payload = Uint8List(28);
-
-    expect(
-      service.decrypt(payload),
-      throwsA(
-        isA<StateError>().having(
-          (error) => error.message,
-          'message',
-          contains('missing'),
-        ),
-      ),
-    );
-  });
-
 }
 
 void main() {
@@ -49,6 +33,22 @@ void main() {
     expect(
       service.encrypt(Uint8List.fromList([1])),
       throwsA(isA<StateError>()),
+    );
+  });
+
+  test('fails closed when decrypting without a stored key', () async {
+    final service = EncryptionService(_MemoryKeyStore());
+    final payload = Uint8List(28);
+
+    expect(
+      service.decrypt(payload),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('missing'),
+        ),
+      ),
     );
   });
 }
