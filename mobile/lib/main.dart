@@ -221,8 +221,10 @@ class _VaultPageState extends State<VaultPage> {
                                 switch (action) {
                                   case _VaultAction.export:
                                     _exportFile(file);
+                                    break;
                                   case _VaultAction.delete:
                                     _deleteFile(file);
+                                    break;
                                 }
                               },
                               itemBuilder: (context) => const [
