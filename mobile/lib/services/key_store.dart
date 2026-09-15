@@ -13,11 +13,13 @@ class KeyStore implements VaultKeyStore {
   static const _keyName = 'vault_aes256_key';
   final FlutterSecureStorage _storage;
 
+  @override
   Future<List<int>?> readKey() async {
     final encoded = await _storage.read(key: _keyName);
     return encoded == null ? null : base64Url.decode(encoded);
   }
 
+  @override
   Future<void> writeKey(List<int> key) => _storage.write(
         key: _keyName,
         value: base64UrlEncode(key),

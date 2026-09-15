@@ -12,7 +12,7 @@ class EncryptionService {
     final existing = await _keys.readKey();
     if (existing != null) {
       if (existing.length != 32) {
-        throw const StateError('Stored vault key has an invalid length');
+        throw StateError('Stored vault key has an invalid length');
       }
       return SecretKey(existing);
     }
