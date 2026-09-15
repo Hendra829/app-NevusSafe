@@ -87,7 +87,7 @@ class VaultStorageService {
     final size = await source.length();
     if (!isSupportedFile(name, size)) {
       throw const VaultStorageException(
-        'This file type is unsupported or exceeds the 10 GiB limit',
+        'This file type is unsupported or exceeds the 64 MiB limit',
       );
     }
 
