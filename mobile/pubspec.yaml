@@ -1,5 +1,5 @@
 name: nevus_safe
-description: Encrypted, local-first file vault with optional Google Drive backup.
+description: Encrypted, local-first file vault.
 publish_to: none
 version: 0.1.0+1
 
@@ -15,6 +15,7 @@ dependencies:
   file_picker: ^8.1.2
   flutter_secure_storage: ^9.2.2
   google_sign_in: ^6.2.1
+  path: ^1.9.0
   path_provider: ^2.1.4
 
 dev_dependencies:

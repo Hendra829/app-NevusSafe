@@ -33,7 +33,7 @@ def hasReleaseSigning = keystorePropertiesFile.exists() &&
 
 android {
     namespace "id.nevussafe.app"
-    compileSdk flutter.compileSdkVersion
+    compileSdk 35
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -69,14 +69,7 @@ android {
         release {
             if (hasReleaseSigning) {
                 signingConfig signingConfigs.release
-            } else {
-                // No key.properties: fall back to debug signing so CI can still
-                // produce an installable APK for testing.
-                signingConfig signingConfigs.debug
             }
-        }
-        debug {
-            signingConfig signingConfigs.debug
         }
     }
 }
